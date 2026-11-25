@@ -39,12 +39,16 @@ function loadRenderer(app) {
     const slots = ['left', 'right'].flatMap(side => ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'SUPPORT'].map(role => {
         const slot = new Element(); slot.dataset = { side, role }; return slot;
     }));
+    const html = fs.readFileSync(path.join(root, app, 'index.html'), 'utf8');
+    const headers = Array.from(html.matchAll(/<div class="[^"]*sortable-header[^"]*" data-sort="([^"]+)">([^<]+)<\/div>/g), match => {
+        const header = new Element(); header.dataset.sort = match[1]; header.textContent = match[2]; return header;
+    });
     const document = {
         body: element('body'), activeElement: null,
         getElementById: element,
         createElement: () => new Element(),
         querySelector: selector => element(selector),
-        querySelectorAll: selector => selector === '#recommendation-list li' ? element('recommendation-list').children : selector === '.role-slot' ? slots : [],
+        querySelectorAll: selector => selector === '#recommendation-list li' ? element('recommendation-list').children : selector === '.role-slot' ? slots : selector === '.sortable-header' ? headers : selector === '.rec-stat-header' ? headers.slice(2) : [],
         addEventListener: (event, callback) => { if (event === 'DOMContentLoaded') document.ready = callback; }
     };
     let copied = '', savedSettings;
@@ -58,7 +62,7 @@ function loadRenderer(app) {
         navigator: { clipboard: { writeText: async text => { copied = text; } } },
         ResizeObserver: class { observe() {} }
     });
-    let script = fs.readFileSync(path.join(root, app, 'index.html'), 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+    let script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
     script = script.replace('            initializeApp();', `
         globalThis.api = {
             getReferenceMatchup, updateCounterpickReference, displayFilteredRecommendations, applySettings,
@@ -93,7 +97,7 @@ function loadRenderer(app) {
     document.ready();
     element('time-period-select').value = 'patch'; element('rank-select').value = 'platinum_plus';
     element('min-games-filter').value = '300';
-    return { api: context.api, element, slots, copied: () => copied, savedSettings: () => savedSettings };
+    return { api: context.api, element, slots, headers, copied: () => copied, savedSettings: () => savedSettings };
 }
 
 function dataset(sylas = 0.0966, malphite = -0.0964, games = 299) {
@@ -110,6 +114,65 @@ const recommendation = (name, score, wr = 0.52, frequency = 0.8) => ({
 });
 
 for (const app of ['desktop-app', 'web-app']) {
+    test(`${app}: win rate mode updates ranks, all delta columns, sorting and copied order without mutating scores`, () => {
+        const { api, element, headers } = loadRenderer(app);
+        const picks = [recommendation('Ahri', 0.04, 0.46), {
+            ...recommendation('Sylas', 0.01, 0.54), lane_delta: -0.02, ally_delta: 0.03, enemy_delta: -0.02
+        }];
+        api.applySettings({});
+        api.setState({ champions: [champion('Ahri'), champion('Sylas')], recommendations: picks });
+        const rows = () => element('recommendation-list').children;
+        const order = () => rows().map(row => row.dataset.championName);
+        const stats = row => Array.from(row.innerHTML.matchAll(/<div class="rec-cell-stat[^"]*">(?:<b>)?([^<]+)/g), match => match[1]);
+        api.displayFilteredRecommendations();
+        assert.deepEqual(order(), ['Ahri', 'Sylas']);
+        assert.deepEqual(stats(rows()[0]), ['1/2', '+4.00', '+4.00', '+0.00', '+4.00', '46.00%', '80.0%']);
+
+        element('win-rate-toggle').checked = true;
+        element('win-rate-toggle').events.change();
+        assert.deepEqual(order(), ['Sylas', 'Ahri']);
+        assert.deepEqual(headers.slice(2, 6).map(header => header.textContent), ['Total WR', 'Lane WR', 'Ally WR', 'Enemy WR']);
+        assert.deepEqual(stats(rows()[0]), ['1/2', '55.00%', '52.00%', '57.00%', '52.00%', '54.00%', '80.0%']);
+        assert.match(rows()[0].innerHTML, /delta-neg">52.00%/);
+        assert.equal(Array.from(api.getCopyableRecommendations()).join(','), 'Sylas,Ahri');
+        assert.equal(picks[1].total_delta, 0.01);
+
+        headers.find(header => header.dataset.sort === 'total_delta').events.click();
+        assert.deepEqual(order(), ['Ahri', 'Sylas']);
+        headers.find(header => header.dataset.sort === 'lane_delta').events.click();
+        assert.deepEqual(order(), ['Sylas', 'Ahri']); // 52% versus 50%, despite the smaller lane delta
+        headers.find(header => header.dataset.sort === 'rank').events.click();
+        assert.deepEqual(order(), ['Ahri', 'Sylas']); // descending rank, not descending score
+
+        element('win-rate-toggle').checked = false;
+        element('win-rate-toggle').events.change();
+        assert.deepEqual(order(), ['Ahri', 'Sylas']);
+        assert.equal(headers[2].textContent, 'Total Δ');
+        assert.match(rows()[1].innerHTML, /delta-neg">-2.00/);
+    });
+
+    test(`${app}: win rate preference survives reload and old settings default to delta`, () => {
+        let harness = loadRenderer(app);
+        harness.api.applySettings({ minGames: '150' });
+        assert.equal(harness.element('win-rate-toggle').checked, false);
+        harness.element('win-rate-toggle').checked = true;
+        harness.element('win-rate-toggle').events.change();
+        const saved = harness.savedSettings();
+        assert.equal(saved.useWinRate, true);
+        assert.equal(saved.minGames, '150');
+        harness = loadRenderer(app);
+        harness.api.applySettings(saved);
+        assert.equal(harness.element('win-rate-toggle').checked, true);
+        assert.equal(harness.headers[2].textContent, 'Total WR');
+        harness.element('win-rate-toggle').checked = false;
+        harness.element('win-rate-toggle').events.change();
+        const disabled = harness.savedSettings();
+        harness = loadRenderer(app);
+        harness.api.applySettings(disabled);
+        assert.equal(harness.element('win-rate-toggle').checked, false);
+        assert.equal(harness.headers[2].textContent, 'Total Δ');
+    });
+
     test(`${app}: reference starts collapsed and remembers expansion and collapse across reloads`, () => {
         let harness = loadRenderer(app);
         harness.api.applySettings({ minGames: '150' });

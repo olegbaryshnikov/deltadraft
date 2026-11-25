@@ -39,9 +39,13 @@ An already-installed DraftDiff version will not include these source changes.
 5. In real League champion select, start live tracking. Check new picks, bans,
    hovers with the toggle on/off, teammate recommendations, and manual role locks.
    Stop and restart tracking and confirm the draft continues updating.
+6. Toggle **Win rate + Δ** beside Favorites. Check that ranking uses Base WR +
+   Total Δ and all four delta columns show Base WR + their respective delta as
+   percentages. Column sorting and COPY TOP 10 should follow the displayed values.
+   Reopen the app to check persistence; switch off to restore delta ranking and values.
 
-Also review the web version's manual drafting, help, reference, and clipboard
-behavior. It retains the desktop download link and has no live tracking.
+Also review the web version's manual drafting, help, reference, clipboard, and
+Win rate + Δ behavior. It retains the desktop download link and has no live tracking.
 
 Creating a development checkpoint does not publish a release. Publishing requires
 the owner's explicit approval after UI and real desktop live-tracking testing.
