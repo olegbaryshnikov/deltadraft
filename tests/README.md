@@ -39,7 +39,7 @@ An already-installed DraftDiff version will not include these source changes.
 5. In real League champion select, start live tracking. Check new picks, bans,
    hovers with the toggle on/off, teammate recommendations, and manual role locks.
    Stop and restart tracking and confirm the draft continues updating.
-6. Check the leftmost **Total WR** column: Base WR + Total Δ. Click its header to
+6. Check **Total WR** after Champion: Base WR + Total Δ. Click its header to
    sort both ways, then Total Δ to restore the default order. Delta columns and
    rank numbers should remain unchanged.
 

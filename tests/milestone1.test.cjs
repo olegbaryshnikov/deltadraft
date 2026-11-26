@@ -125,14 +125,14 @@ for (const app of ['desktop-app', 'web-app']) {
         const stats = row => Array.from(row.innerHTML.matchAll(/<div class="rec-cell-stat[^"]*">(?:<b>)?([^<]+)/g), match => match[1]);
         api.displayFilteredRecommendations();
         assert.deepEqual(order(), ['Ahri', 'Sylas']);
-        assert.equal(headers[0].textContent, 'Total WR');
-        assert.deepEqual(stats(rows()[0]), ['50.00%', '1/2', '+4.00', '+4.00', '+0.00', '+4.00', '46.00%', '80.0%']);
+        assert.deepEqual(headers.slice(0, 4).map(header => header.textContent), ['Rank', 'Champion', 'Total WR', 'Total Δ']);
+        assert.deepEqual(stats(rows()[0]), ['1/2', '50.00%', '+4.00', '+4.00', '+0.00', '+4.00', '46.00%', '80.0%']);
 
-        headers[0].events.click();
+        headers[2].events.click();
         assert.deepEqual(order(), ['Sylas', 'Ahri']);
-        assert.deepEqual(stats(rows()[0]), ['55.00%', '2/2', '+1.00', '-2.00', '+3.00', '-2.00', '54.00%', '80.0%']);
+        assert.deepEqual(stats(rows()[0]), ['2/2', '55.00%', '+1.00', '-2.00', '+3.00', '-2.00', '54.00%', '80.0%']);
         assert.equal(Array.from(api.getCopyableRecommendations()).join(','), 'Sylas,Ahri');
-        headers[0].events.click();
+        headers[2].events.click();
         assert.deepEqual(order(), ['Ahri', 'Sylas']);
         headers.find(header => header.dataset.sort === 'total_delta').events.click();
         assert.deepEqual(order(), ['Ahri', 'Sylas']);

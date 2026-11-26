@@ -225,14 +225,14 @@
         .modal-content .quick-start { padding-left: 24px; }
         .quick-start li { margin-bottom: 8px; }
         .quick-start-note { color: var(--text-secondary) !important; font-size: 0.85rem !important; }
-        #recommendation-header, #recommendation-list li { grid-template-columns: 80px 42px minmax(95px, 1fr) 74px 62px 62px 62px 76px 84px 16px; gap: 8px; }
+        #recommendation-header, #recommendation-list li { grid-template-columns: 42px minmax(95px, 1fr) 80px 74px 62px 62px 62px 76px 84px 16px; gap: 8px; }
         #recommendation-header > .help-trigger { margin: 0; align-self: center; }
         .recommendation-controls-wrapper { margin-bottom: 10px; }
         @media (max-width: 1150px) {
             .draft-area { gap: 16px; }
             .team-panel { width: 115px; flex-shrink: 0; }
             .recommendation-controls { flex-wrap: wrap; }
-            #recommendation-header, #recommendation-list li { grid-template-columns: 74px 36px minmax(80px, 1fr) 70px 52px 52px 52px 74px 80px 16px; gap: 5px; }
+            #recommendation-header, #recommendation-list li { grid-template-columns: 36px minmax(80px, 1fr) 74px 70px 52px 52px 52px 74px 80px 16px; gap: 5px; }
         }
     </style>
 </head>
@@ -354,9 +354,9 @@
                             </div>
                         </div>
                         <div id="recommendation-header">
-                            <div class="rec-stat-header sortable-header" data-sort="total_win_rate">Total WR</div>
                             <div class="sortable-header" data-sort="rank">Rank</div>
                             <div class="sortable-header" data-sort="champion">Champion</div>
+                            <div class="rec-stat-header sortable-header" data-sort="total_win_rate">Total WR</div>
                             <div class="rec-stat-header sortable-header active-sort-desc" data-sort="total_delta">Total Δ</div>
                             <div class="rec-stat-header sortable-header" data-sort="lane_delta">Lane Δ</div>
                             <div class="rec-stat-header sortable-header" data-sort="ally_delta">Ally Δ</div>
@@ -1184,12 +1184,12 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                     const rankStr = `${rank}/${totalRanks}`;
 
                     li.innerHTML = `
-                        <div class="rec-cell-stat">${totalWrStr}</div>
                         <div class="rec-cell-stat">${rankStr}</div>
                         <div class="rec-cell-champ">
                             <img class="rec-img" src="${DDRAGON_BASE_URL}/cdn/${latestPatch}/img/champion/${champData.image.full}">
                             <div class="rec-name">${pick.champion}${favoriteStar}</div>
                         </div>
+                        <div class="rec-cell-stat">${totalWrStr}</div>
                         <div class="rec-cell-stat ${totalDeltaVal >= 0 ? 'delta-pos' : 'delta-neg'}"><b>${totalDeltaStr}</b></div>
                         <div class="rec-cell-stat ${laneDeltaVal >= 0 ? 'delta-pos' : 'delta-neg'}">${laneDeltaStr}</div>
                         <div class="rec-cell-stat ${allyDeltaVal >= 0 ? 'delta-pos' : 'delta-neg'}">${allyDeltaStr}</div>
