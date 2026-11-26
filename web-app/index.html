@@ -225,14 +225,14 @@
         .modal-content .quick-start { padding-left: 24px; }
         .quick-start li { margin-bottom: 8px; }
         .quick-start-note { color: var(--text-secondary) !important; font-size: 0.85rem !important; }
-        #recommendation-header, #recommendation-list li { grid-template-columns: 42px minmax(95px, 1fr) 74px 62px 62px 62px 76px 84px 16px; gap: 8px; }
+        #recommendation-header, #recommendation-list li { grid-template-columns: 80px 42px minmax(95px, 1fr) 74px 62px 62px 62px 76px 84px 16px; gap: 8px; }
         #recommendation-header > .help-trigger { margin: 0; align-self: center; }
         .recommendation-controls-wrapper { margin-bottom: 10px; }
         @media (max-width: 1150px) {
             .draft-area { gap: 16px; }
             .team-panel { width: 115px; flex-shrink: 0; }
             .recommendation-controls { flex-wrap: wrap; }
-            #recommendation-header, #recommendation-list li { grid-template-columns: 36px minmax(80px, 1fr) 70px 52px 52px 52px 74px 80px 16px; gap: 5px; }
+            #recommendation-header, #recommendation-list li { grid-template-columns: 74px 36px minmax(80px, 1fr) 70px 52px 52px 52px 74px 80px 16px; gap: 5px; }
         }
     </style>
 </head>
@@ -259,8 +259,8 @@
                 <p>LoLalytics defines Delta 2 as the matchup win rate minus the normalised champion win rate in that matchup. Positive values mean a champion wins more often than the normalised win rates suggest; negative values mean less often.</p>
                 <p>The values are directional: Viktor into Syndra and Syndra into Viktor are separate statistics, and need not be exact opposites. DraftDiff keeps both values from the source data.</p>
                 <h3>Reading the columns</h3>
-                <p><strong>Ally Δ</strong> sums interactions with teammates. <strong>Enemy Δ</strong> sums interactions with opponents. <strong>Lane Δ</strong> isolates the same-role opponent and is also included in Enemy Δ. <strong>Total Δ</strong> is Ally Δ + Enemy Δ.</p>
-                <p>A single interaction's Δ is shown in percentage points. Enable Win rate to show and sort by base win rate + delta instead. Your experience on a champion and the way the game is played still matter.</p>
+                <p><strong>Ally Δ</strong> sums interactions with teammates. <strong>Enemy Δ</strong> sums interactions with opponents. <strong>Lane Δ</strong> isolates the same-role opponent and is also included in Enemy Δ. <strong>Total Δ</strong> is Ally Δ + Enemy Δ. <strong>Total WR</strong> is Base WR + Total Δ.</p>
+                <p>A single interaction's Δ is shown in percentage points. Total Δ is a comparison score, not a predicted match win rate. Your experience on a champion and the way the game is played still matter.</p>
                 <h3>Sample sizes and filters</h3>
                 <p><strong>Min Games</strong> applies to each individual interaction. If it has too few games, its contribution is treated as zero. Zero can therefore mean excluded or missing data, as well as a neutral interaction. A higher threshold reduces the influence of small samples; it does not guarantee accuracy.</p>
                 <p><strong>Base WR</strong> is the champion's overall win rate in the selected role and dataset. <strong>Role Freq</strong> is the share of that champion's appearances in that role. Their minimum filters hide recommendations below your thresholds.</p>
@@ -336,9 +336,6 @@
                                 </div>
                             </div>
                             <div class="recommendation-controls recommendation-actions">
-                                <label class="favorite-toggle-label" title="Switch between deltas and win rates (base win rate + delta).">
-                                    <input type="checkbox" id="win-rate-toggle"> Win rate
-                                </label>
                                 <label class="favorite-toggle-label">
                                     <input type="checkbox" id="favorites-only-toggle"> Favorites
                                 </label>
@@ -357,6 +354,7 @@
                             </div>
                         </div>
                         <div id="recommendation-header">
+                            <div class="rec-stat-header sortable-header" data-sort="total_win_rate">Total WR</div>
                             <div class="sortable-header" data-sort="rank">Rank</div>
                             <div class="sortable-header" data-sort="champion">Champion</div>
                             <div class="rec-stat-header sortable-header active-sort-desc" data-sort="total_delta">Total Δ</div>
@@ -365,7 +363,7 @@
                             <div class="rec-stat-header sortable-header" data-sort="enemy_delta">Enemy Δ</div>
                             <div class="rec-stat-header sortable-header" data-sort="base_win_rate">Base WR</div>
                             <div class="rec-stat-header sortable-header" data-sort="role_frequency">Role Freq</div>
-                            <button type="button" class="help-trigger" data-help="columns" aria-label="Explain Total, Lane, Ally, Enemy, Base WR and Role Freq">?</button>
+                            <button type="button" class="help-trigger" data-help="columns" aria-label="Explain Total WR, Total Δ, Lane Δ, Ally Δ, Enemy Δ, Base WR and Role Freq">?</button>
                         </div>
                         <ol id="recommendation-list"></ol>
                     </div>
@@ -426,7 +424,6 @@
             const rightTeamPanel = document.getElementById('right-team-panel');
             const recommendationSearch = document.getElementById('recommendation-search');
             const contextMenu = document.getElementById('context-menu');
-            const winRateToggle = document.getElementById('win-rate-toggle');
             const favoritesOnlyToggle = document.getElementById('favorites-only-toggle');
             const recTabBtn = document.getElementById('rec-tab-btn');
             const analysisTabBtn = document.getElementById('analysis-tab-btn');
@@ -453,7 +450,6 @@
                 baseWr: '45',
                 roleRate: '5',
                 favoritesOnly: false,
-                useWinRate: false,
                 referenceExpanded: false,
                 minGames: '300',
             };
@@ -465,7 +461,7 @@
                 'min-base-wr': 'Hide recommendations whose overall win rate in this role is below this percentage, using your selected rank and time period.',
                 'min-role-frequency': 'Hide recommendations rarely played in this role. For example, 20% means one in five appearances for that champion is in this role.',
                 'min-games': 'Each champion-to-champion interaction needs at least this many games to contribute to the calculations. Below this threshold, its contribution is treated as zero. This does not hide the champion itself.',
-                columns: 'Total Δ: Ally Δ + Enemy Δ.\nLane Δ: the same-role opponent’s contribution, shown separately and also included in Enemy Δ.\nAlly Δ: interactions with teammates.\nEnemy Δ: interactions with all opponents.\nBase WR: this champion’s overall win rate in this role.\nRole Freq: the share of this champion’s appearances played in this role, not its popularity among all champions.\n\nAll values use your selected dataset. Higher deltas are more favorable for the suggested champion. Enable Win rate to show and sort by base win rate + delta instead.',
+                columns: 'Total WR: Base WR + Total Δ.\nTotal Δ: Ally Δ + Enemy Δ.\nLane Δ: the same-role opponent’s contribution, shown separately and also included in Enemy Δ.\nAlly Δ: interactions with teammates.\nEnemy Δ: interactions with all opponents.\nBase WR: this champion’s overall win rate in this role.\nRole Freq: the share of this champion’s appearances played in this role, not its popularity among all champions.\n\nAll values use your selected dataset. Higher deltas are more favorable for the suggested champion. Total Δ is a comparison score, not a predicted match win rate.',
                 reference: 'Both directions of Sylas MID versus Malphite MID, using your selected rank and time period. A familiar strong counterpick for comparison, not a guaranteed dataset maximum.'
             };
             const helpTooltip = document.getElementById('help-tooltip');
@@ -693,6 +689,7 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                     recommendations.push({
                         champion: pickChamp,
                         total_delta: totalDelta,
+                        total_win_rate: baseWr + totalDelta,
                         base_win_rate: baseWr,
                         pick_rate: pickCombo.pick_rate,
                         role_frequency: pickCombo.role_frequency,
@@ -890,7 +887,6 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                     baseWr: baseWrFilter.value,
                     roleRate: roleRateFilter.value,
                     favoritesOnly: favoritesOnlyToggle.checked,
-                    useWinRate: winRateToggle.checked,
                     referenceExpanded,
                     minGames: minGamesFilter.value,
                 };
@@ -904,8 +900,6 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                 baseWrFilter.value = effectiveSettings.baseWr;
                 roleRateFilter.value = effectiveSettings.roleRate;
                 favoritesOnlyToggle.checked = effectiveSettings.favoritesOnly;
-                winRateToggle.checked = effectiveSettings.useWinRate;
-                updateRecommendationHeaders();
                 setReferenceExpanded(effectiveSettings.referenceExpanded);
                 minGamesFilter.value = effectiveSettings.minGames;
             }
@@ -1097,24 +1091,6 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                 } catch (error) { console.error("Failed to get recommendations:", error); recommendationList.innerHTML = `<li>${error.message}</li>`; }
             }
 
-            function getRecommendationValue(pick, key) {
-                return pick[key] + (winRateToggle.checked && key.endsWith('_delta') ? pick.base_win_rate : 0);
-            }
-
-            function formatRecommendationDelta(pick, key) {
-                const value = getRecommendationValue(pick, key) * 100;
-                return winRateToggle.checked ? value.toFixed(2) + '%' : (value >= 0 ? '+' : '') + value.toFixed(2);
-            }
-
-            function updateRecommendationHeaders() {
-                document.querySelectorAll('.rec-stat-header').forEach(header => {
-                    if (header.dataset.sort.endsWith('_delta')) {
-                        const label = header.dataset.sort.split('_')[0];
-                        header.textContent = label[0].toUpperCase() + label.slice(1) + (winRateToggle.checked ? ' WR' : ' Δ');
-                    }
-                });
-            }
-
             function displayFilteredRecommendations() {
                 copyRecommendationsBtn.disabled = true;
                 copyStatus.textContent = '';
@@ -1135,7 +1111,7 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
 
                 const rankMap = new Map();
                 globallyFilteredRecs
-                    .sort((a,b) => getRecommendationValue(b, 'total_delta') - getRecommendationValue(a, 'total_delta'))
+                    .sort((a,b) => b.total_delta - a.total_delta)
                     .forEach((pick, index) => {
                         rankMap.set(pick.champion, index + 1);
                     });
@@ -1157,8 +1133,8 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                         valA = rankMap.get(a.champion);
                         valB = rankMap.get(b.champion);
                     } else {
-                        valA = getRecommendationValue(a, sortBy);
-                        valB = getRecommendationValue(b, sortBy);
+                        valA = a[sortBy];
+                        valB = b[sortBy];
                     }
 
                     if (sortDirection === 'desc') {
@@ -1185,20 +1161,21 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                         li.classList.add('unavailable');
                     }
 
+                    const totalWrStr = (pick.total_win_rate * 100).toFixed(2) + '%';
                     const baseWrStr = (pick.base_win_rate * 100).toFixed(2) + '%';
                     const roleFreqStr = (pick.role_frequency * 100).toFixed(1) + '%';
 
                     const totalDeltaVal = pick.total_delta * 100;
-                    const totalDeltaStr = formatRecommendationDelta(pick, 'total_delta');
+                    const totalDeltaStr = (totalDeltaVal >= 0 ? '+' : '') + totalDeltaVal.toFixed(2);
 
                     const laneDeltaVal = pick.lane_delta * 100;
-                    const laneDeltaStr = formatRecommendationDelta(pick, 'lane_delta');
+                    const laneDeltaStr = (laneDeltaVal >= 0 ? '+' : '') + laneDeltaVal.toFixed(2);
 
                     const allyDeltaVal = pick.ally_delta * 100;
-                    const allyDeltaStr = formatRecommendationDelta(pick, 'ally_delta');
+                    const allyDeltaStr = (allyDeltaVal >= 0 ? '+' : '') + allyDeltaVal.toFixed(2);
 
                     const enemyDeltaVal = pick.enemy_delta * 100;
-                    const enemyDeltaStr = formatRecommendationDelta(pick, 'enemy_delta');
+                    const enemyDeltaStr = (enemyDeltaVal >= 0 ? '+' : '') + enemyDeltaVal.toFixed(2);
 
                     const isFavorite = favorites[`${pick.champion}-${recommendationTarget?.role}`];
                     const favoriteStar = isFavorite ? '<span class="rec-favorite-star">★</span>' : '';
@@ -1207,6 +1184,7 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                     const rankStr = `${rank}/${totalRanks}`;
 
                     li.innerHTML = `
+                        <div class="rec-cell-stat">${totalWrStr}</div>
                         <div class="rec-cell-stat">${rankStr}</div>
                         <div class="rec-cell-champ">
                             <img class="rec-img" src="${DDRAGON_BASE_URL}/cdn/${latestPatch}/img/champion/${champData.image.full}">
@@ -1504,14 +1482,6 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
             baseWrFilter.addEventListener('input', () => { saveCurrentSettings(); displayFilteredRecommendations(); });
             roleRateFilter.addEventListener('input', () => { saveCurrentSettings(); displayFilteredRecommendations(); });
             favoritesOnlyToggle.addEventListener('change', () => { saveCurrentSettings(); displayFilteredRecommendations(); });
-            winRateToggle.addEventListener('change', () => {
-                sortBy = 'total_delta';
-                sortDirection = 'desc';
-                updateRecommendationHeaders();
-                updateSortHeaders();
-                saveCurrentSettings();
-                displayFilteredRecommendations();
-            });
 
             document.querySelectorAll('.sortable-header').forEach(header => {
                 header.addEventListener('click', () => {

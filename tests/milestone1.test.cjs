@@ -48,7 +48,7 @@ function loadRenderer(app) {
         getElementById: element,
         createElement: () => new Element(),
         querySelector: selector => element(selector),
-        querySelectorAll: selector => selector === '#recommendation-list li' ? element('recommendation-list').children : selector === '.role-slot' ? slots : selector === '.sortable-header' ? headers : selector === '.rec-stat-header' ? headers.slice(2) : [],
+        querySelectorAll: selector => selector === '#recommendation-list li' ? element('recommendation-list').children : selector === '.role-slot' ? slots : selector === '.sortable-header' ? headers : [],
         addEventListener: (event, callback) => { if (event === 'DOMContentLoaded') document.ready = callback; }
     };
     let copied = '', savedSettings;
@@ -110,67 +110,47 @@ function dataset(sylas = 0.0966, malphite = -0.0964, games = 299) {
 const champion = (id, name = id, key = id) => ({ id, name, key, image: { full: `${id}.png` } });
 const recommendation = (name, score, wr = 0.52, frequency = 0.8) => ({
     champion: name, total_delta: score, lane_delta: score, ally_delta: 0, enemy_delta: score,
-    base_win_rate: wr, role_frequency: frequency, breakdown: []
+    total_win_rate: wr + score, base_win_rate: wr, role_frequency: frequency, breakdown: []
 });
 
 for (const app of ['desktop-app', 'web-app']) {
-    test(`${app}: win rate mode updates ranks, all delta columns, sorting and copied order without mutating scores`, () => {
+    test(`${app}: Total WR is sortable while delta columns and default ranking stay unchanged`, () => {
         const { api, element, headers } = loadRenderer(app);
         const picks = [recommendation('Ahri', 0.04, 0.46), {
             ...recommendation('Sylas', 0.01, 0.54), lane_delta: -0.02, ally_delta: 0.03, enemy_delta: -0.02
         }];
-        api.applySettings({});
         api.setState({ champions: [champion('Ahri'), champion('Sylas')], recommendations: picks });
         const rows = () => element('recommendation-list').children;
         const order = () => rows().map(row => row.dataset.championName);
         const stats = row => Array.from(row.innerHTML.matchAll(/<div class="rec-cell-stat[^"]*">(?:<b>)?([^<]+)/g), match => match[1]);
         api.displayFilteredRecommendations();
         assert.deepEqual(order(), ['Ahri', 'Sylas']);
-        assert.deepEqual(stats(rows()[0]), ['1/2', '+4.00', '+4.00', '+0.00', '+4.00', '46.00%', '80.0%']);
+        assert.equal(headers[0].textContent, 'Total WR');
+        assert.deepEqual(stats(rows()[0]), ['50.00%', '1/2', '+4.00', '+4.00', '+0.00', '+4.00', '46.00%', '80.0%']);
 
-        element('win-rate-toggle').checked = true;
-        element('win-rate-toggle').events.change();
+        headers[0].events.click();
         assert.deepEqual(order(), ['Sylas', 'Ahri']);
-        assert.deepEqual(headers.slice(2, 6).map(header => header.textContent), ['Total WR', 'Lane WR', 'Ally WR', 'Enemy WR']);
-        assert.deepEqual(stats(rows()[0]), ['1/2', '55.00%', '52.00%', '57.00%', '52.00%', '54.00%', '80.0%']);
-        assert.match(rows()[0].innerHTML, /delta-neg">52.00%/);
+        assert.deepEqual(stats(rows()[0]), ['55.00%', '2/2', '+1.00', '-2.00', '+3.00', '-2.00', '54.00%', '80.0%']);
         assert.equal(Array.from(api.getCopyableRecommendations()).join(','), 'Sylas,Ahri');
-        assert.equal(picks[1].total_delta, 0.01);
-
+        headers[0].events.click();
+        assert.deepEqual(order(), ['Ahri', 'Sylas']);
         headers.find(header => header.dataset.sort === 'total_delta').events.click();
         assert.deepEqual(order(), ['Ahri', 'Sylas']);
-        headers.find(header => header.dataset.sort === 'lane_delta').events.click();
-        assert.deepEqual(order(), ['Sylas', 'Ahri']); // 52% versus 50%, despite the smaller lane delta
-        headers.find(header => header.dataset.sort === 'rank').events.click();
-        assert.deepEqual(order(), ['Ahri', 'Sylas']); // descending rank, not descending score
-
-        element('win-rate-toggle').checked = false;
-        element('win-rate-toggle').events.change();
-        assert.deepEqual(order(), ['Ahri', 'Sylas']);
-        assert.equal(headers[2].textContent, 'Total Δ');
-        assert.match(rows()[1].innerHTML, /delta-neg">-2.00/);
     });
 
-    test(`${app}: win rate preference survives reload and old settings default to delta`, () => {
-        let harness = loadRenderer(app);
-        harness.api.applySettings({ minGames: '150' });
-        assert.equal(harness.element('win-rate-toggle').checked, false);
-        harness.element('win-rate-toggle').checked = true;
-        harness.element('win-rate-toggle').events.change();
-        const saved = harness.savedSettings();
-        assert.equal(saved.useWinRate, true);
-        assert.equal(saved.minGames, '150');
-        harness = loadRenderer(app);
-        harness.api.applySettings(saved);
-        assert.equal(harness.element('win-rate-toggle').checked, true);
-        assert.equal(harness.headers[2].textContent, 'Total WR');
-        harness.element('win-rate-toggle').checked = false;
-        harness.element('win-rate-toggle').events.change();
-        const disabled = harness.savedSettings();
-        harness = loadRenderer(app);
-        harness.api.applySettings(disabled);
-        assert.equal(harness.element('win-rate-toggle').checked, false);
-        assert.equal(harness.headers[2].textContent, 'Total Δ');
+    test(`${app}: Total WR includes the base win rate and total delta`, () => {
+        const { api } = loadRenderer(app);
+        const data = dataset(0.04, -0.02, 1000);
+        data.champion_stats_list = [{champion: 'Sylas', role: 'middle'}, {champion: 'Malphite', role: 'middle'}];
+        data.champion_ratings = new Map([
+            ['Sylas,MIDDLE', {win_rate: 0.46}], ['Malphite,MIDDLE', {win_rate: 0.54}]
+        ]);
+        const picks = api.getRecommendations({}, {MIDDLE: 'Malphite'}, 'MIDDLE', data);
+        assert.equal(picks[0].total_win_rate, 0.5);
+        assert.equal(picks[0].total_delta, 0.04);
+        assert.equal(picks[1].total_win_rate, 0.54); // no interaction: base win rate
+        const reverse = api.getRecommendations({}, {MIDDLE: 'Sylas'}, 'MIDDLE', data);
+        assert.equal(reverse[1].total_win_rate, 0.52); // negative delta
     });
 
     test(`${app}: reference starts collapsed and remembers expansion and collapse across reloads`, () => {
