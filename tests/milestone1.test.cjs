@@ -136,6 +136,14 @@ for (const app of ['desktop-app', 'web-app']) {
         assert.deepEqual(order(), ['Ahri', 'Sylas']);
         headers.find(header => header.dataset.sort === 'total_delta').events.click();
         assert.deepEqual(order(), ['Ahri', 'Sylas']);
+
+        for (const delta of [-0.01, 0, 0.01]) {
+            api.setState({ champions: [champion('Ahri')], recommendations: [recommendation('Ahri', delta)] });
+            api.displayFilteredRecommendations();
+            const color = delta >= 0 ? 'delta-pos' : 'delta-neg';
+            const value = ((0.52 + delta) * 100).toFixed(2) + '%';
+            assert.ok(rows()[0].innerHTML.includes(`<div class="rec-cell-stat ${color}">${value}</div>`));
+        }
     });
 
     test(`${app}: Total WR includes the base win rate and total delta`, () => {

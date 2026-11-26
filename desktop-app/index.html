@@ -1236,7 +1236,7 @@ A familiar strong counterpick for comparison. Each direction keeps its own raw D
                             <img class="rec-img" src="${DDRAGON_BASE_URL}/cdn/${latestPatch}/img/champion/${champData.image.full}">
                             <div class="rec-name">${pick.champion}${favoriteStar}</div>
                         </div>
-                        <div class="rec-cell-stat">${totalWrStr}</div>
+                        <div class="rec-cell-stat ${totalDeltaVal >= 0 ? 'delta-pos' : 'delta-neg'}">${totalWrStr}</div>
                         <div class="rec-cell-stat ${totalDeltaVal >= 0 ? 'delta-pos' : 'delta-neg'}"><b>${totalDeltaStr}</b></div>
                         <div class="rec-cell-stat ${laneDeltaVal >= 0 ? 'delta-pos' : 'delta-neg'}">${laneDeltaStr}</div>
                         <div class="rec-cell-stat ${allyDeltaVal >= 0 ? 'delta-pos' : 'delta-neg'}">${allyDeltaStr}</div>
